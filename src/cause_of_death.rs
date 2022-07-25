@@ -1,9 +1,24 @@
 use std::{fmt::Display, str::FromStr};
 
+/// How many causes of death there are.
+pub const CAUSES_OF_DEATH: usize = 29;
+
+#[cfg(test)]
+use strum::EnumCount;
+
+use crate::Error;
+#[cfg(test)]
+// Ensure `CAUSES_OF_DEATH` is correct
+static_assertions::const_assert_eq!(
+    CAUSES_OF_DEATH,
+    CauseOfDeath::COUNT
+);
+
 // means of death
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[cfg_attr(test, derive(strum::EnumIter))]
-enum CauseOfDeath {
+#[cfg_attr(test, derive(strum::EnumIter, strum::EnumCount))]
+#[repr(u8)]
+pub enum CauseOfDeath {
     Shotgun,
     Gauntlet,
     Machinegun,
@@ -71,8 +86,55 @@ impl CauseOfDeath {
     }
 }
 
+impl From<CauseOfDeath> for u8 {
+    fn from(cause: CauseOfDeath) -> Self {
+        cause as Self
+    }
+}
+
+impl TryFrom<u8> for CauseOfDeath {
+    type Error = crate::Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        let cause = match value {
+            0 => CauseOfDeath::Shotgun,
+            1 => CauseOfDeath::Gauntlet,
+            2 => CauseOfDeath::Machinegun,
+            3 => CauseOfDeath::Grenade,
+            4 => CauseOfDeath::GrenadeSplash,
+            5 => CauseOfDeath::Rocket,
+            6 => CauseOfDeath::RocketSplash,
+            7 => CauseOfDeath::Plasma,
+            8 => CauseOfDeath::PlasmaSplash,
+            9 => CauseOfDeath::Railgun,
+            10 => CauseOfDeath::Lightning,
+            11 => CauseOfDeath::Bfg,
+            12 => CauseOfDeath::BfgSplash,
+            13 => CauseOfDeath::Water,
+            14 => CauseOfDeath::Slime,
+            15 => CauseOfDeath::Lava,
+            16 => CauseOfDeath::Crush,
+            17 => CauseOfDeath::Telefrag,
+            18 => CauseOfDeath::Falling,
+            19 => CauseOfDeath::Suicide,
+            20 => CauseOfDeath::TargetLaser,
+            21 => CauseOfDeath::TriggerHurt,
+            22 => CauseOfDeath::Nail,
+            23 => CauseOfDeath::Chaingun,
+            24 => CauseOfDeath::ProximityMine,
+            25 => CauseOfDeath::Kamikaze,
+            26 => CauseOfDeath::Juiced,
+            27 => CauseOfDeath::Grapple,
+            28 => CauseOfDeath::Unknown,
+            _ => return Err(Error::CauseOfDeathFromByte(value)),
+        };
+
+        Ok(cause)
+    }
+}
+
 impl FromStr for CauseOfDeath {
-    type Err = anyhow::Error;
+    type Err = crate::Error;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let cause = match input {
@@ -105,10 +167,11 @@ impl FromStr for CauseOfDeath {
             "MOD_JUICED" => CauseOfDeath::Juiced,
             "MOD_GRAPPLE" => CauseOfDeath::Grapple,
             "MOD_UNKNOWN" => CauseOfDeath::Unknown,
-            _ => anyhow::bail!(
-                "Unknown cause of death: {}",
-                input
-            ),
+            _ => {
+                return Err(Error::UnknownCauseOfDeath(
+                    input.into(),
+                ))
+            }
         };
 
         Ok(cause)
@@ -132,9 +195,9 @@ impl Display for CauseOfDeath {
 
 #[cfg(test)]
 mod tests {
-    use strum::IntoEnumIterator;
+    use strum::{EnumCount, IntoEnumIterator};
 
-    use super::CauseOfDeath;
+    use super::{CauseOfDeath, CAUSES_OF_DEATH};
 
     /// Converts a mean of death into the expected
     /// Quake format
@@ -149,6 +212,11 @@ mod tests {
         let as_shouty = heck::AsShoutySnakeCase(debug_msg);
 
         format!("MOD_{as_shouty}")
+    }
+
+    #[test]
+    fn has_correct_total_of_causes_of_death() {
+        assert_eq!(CAUSES_OF_DEATH, CauseOfDeath::COUNT);
     }
 
     #[test]
@@ -179,6 +247,18 @@ mod tests {
                 cause_of_death.as_str(),
                 to_quake_format(cause_of_death)
             );
+        }
+    }
+
+    #[test]
+    fn check_into_u8_impl() {
+        let expected_numbers = 0..CauseOfDeath::COUNT;
+
+        for (cause_of_death, expected_number) in
+            CauseOfDeath::iter().zip(expected_numbers)
+        {
+            let byte: u8 = cause_of_death.into();
+            assert_eq!(byte as usize, expected_number);
         }
     }
 }
