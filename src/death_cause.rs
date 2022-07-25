@@ -1,7 +1,4 @@
-use std::fmt::Display;
-
-#[cfg(test)]
-use strum::IntoEnumIterator;
+use std::{fmt::Display, str::FromStr};
 
 // means of death
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -39,7 +36,7 @@ enum CauseOfDeath {
 }
 
 impl CauseOfDeath {
-    pub fn as_str(&self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             CauseOfDeath::Shotgun => "MOD_SHOTGUN",
             CauseOfDeath::Gauntlet => "MOD_GAUNTLET",
@@ -74,6 +71,50 @@ impl CauseOfDeath {
     }
 }
 
+impl FromStr for CauseOfDeath {
+    type Err = anyhow::Error;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let cause = match input {
+            "MOD_SHOTGUN" => CauseOfDeath::Shotgun,
+            "MOD_GAUNTLET" => CauseOfDeath::Gauntlet,
+            "MOD_MACHINEGUN" => CauseOfDeath::Machinegun,
+            "MOD_GRENADE" => CauseOfDeath::Grenade,
+            "MOD_GRENADE_SPLASH" => CauseOfDeath::GrenadeSplash,
+            "MOD_ROCKET" => CauseOfDeath::Rocket,
+            "MOD_ROCKET_SPLASH" => CauseOfDeath::RocketSplash,
+            "MOD_PLASMA" => CauseOfDeath::Plasma,
+            "MOD_PLASMA_SPLASH" => CauseOfDeath::PlasmaSplash,
+            "MOD_RAILGUN" => CauseOfDeath::Railgun,
+            "MOD_LIGHTNING" => CauseOfDeath::Lightning,
+            "MOD_BFG" => CauseOfDeath::Bfg,
+            "MOD_BFG_SPLASH" => CauseOfDeath::BfgSplash,
+            "MOD_WATER" => CauseOfDeath::Water,
+            "MOD_SLIME" => CauseOfDeath::Slime,
+            "MOD_LAVA" => CauseOfDeath::Lava,
+            "MOD_CRUSH" => CauseOfDeath::Crush,
+            "MOD_TELEFRAG" => CauseOfDeath::Telefrag,
+            "MOD_FALLING" => CauseOfDeath::Falling,
+            "MOD_SUICIDE" => CauseOfDeath::Suicide,
+            "MOD_TARGET_LASER" => CauseOfDeath::TargetLaser,
+            "MOD_TRIGGER_HURT" => CauseOfDeath::TriggerHurt,
+            "MOD_NAIL" => CauseOfDeath::Nail,
+            "MOD_CHAINGUN" => CauseOfDeath::Chaingun,
+            "MOD_PROXIMITY_MINE" => CauseOfDeath::ProximityMine,
+            "MOD_KAMIKAZE" => CauseOfDeath::Kamikaze,
+            "MOD_JUICED" => CauseOfDeath::Juiced,
+            "MOD_GRAPPLE" => CauseOfDeath::Grapple,
+            "MOD_UNKNOWN" => CauseOfDeath::Unknown,
+            _ => anyhow::bail!(
+                "Unknown cause of death: {}",
+                input
+            ),
+        };
+
+        Ok(cause)
+    }
+}
+
 impl AsRef<str> for CauseOfDeath {
     fn as_ref(&self) -> &str {
         self.as_str()
@@ -91,6 +132,7 @@ impl Display for CauseOfDeath {
 
 #[cfg(test)]
 mod tests {
+    use strum::IntoEnumIterator;
 
     use super::CauseOfDeath;
 
@@ -110,13 +152,33 @@ mod tests {
     }
 
     #[test]
+    fn parses_cause_of_death_from_str() {
+        let input =
+            CauseOfDeath::iter().map(CauseOfDeath::as_str);
+        let expected = CauseOfDeath::iter();
+
+        // TODO: is this a good test?
+        for (string_representation, expected_cause_of_death) in
+            input.zip(expected)
+        {
+            assert_eq!(
+                string_representation
+                    .parse::<CauseOfDeath>()
+                    .unwrap(),
+                expected_cause_of_death
+            )
+        }
+    }
+
+    #[test]
     /// Ensures that `CauseOfDeath::as_str` returns
     /// a String in the expected Quake format
     fn to_str_adds_mod_prefix() {
-        use strum::IntoEnumIterator;
-
-        for mean in CauseOfDeath::iter() {
-            assert_eq!(mean.as_str(), to_quake_format(mean));
+        for cause_of_death in CauseOfDeath::iter() {
+            assert_eq!(
+                cause_of_death.as_str(),
+                to_quake_format(cause_of_death)
+            );
         }
     }
 }
