@@ -23,6 +23,7 @@ fn run() -> Result<()> {
 
     for line in reader.lines() {
         let line = line?;
+        // dbg!(&line);
         parser.parse(&line)?;
     }
 

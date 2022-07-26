@@ -15,10 +15,13 @@ pub enum Header {
     ClientBegin,
     ClientUserinfoChanged,
     ClientConnect,
+    ClientDisconnect,
     ShutdownGame,
     Score,
     Item,
     Exit,
+    Red,
+    Say,
     /// Not an actual action but represents the "spacer" line
     /// that comes after ShutdownGame and before InitGame
     ///
@@ -35,6 +38,7 @@ pub fn parse_header(input: &str) -> IResult<&str, Header> {
     let (rest, _ws) = parse_ws(rest)?;
 
     alt((
+        value(Header::Item, tag("Item")),
         value(Header::Kill, tag("Kill")),
         value(Header::InitGame, tag("InitGame")),
         value(Header::ClientBegin, tag("ClientBegin")),
@@ -43,10 +47,12 @@ pub fn parse_header(input: &str) -> IResult<&str, Header> {
             tag("ClientUserinfoChanged"),
         ),
         value(Header::ClientConnect, tag("ClientConnect")),
+        value(Header::Say, tag("say")),
+        value(Header::Red, tag("red")),
+        value(Header::ClientDisconnect, tag("ClientDisconnect")),
         value(Header::ShutdownGame, tag("ShutdownGame")),
         value(Header::Score, tag("score")),
         value(Header::Exit, tag("Exit")),
-        value(Header::Item, tag("Item")),
         value(Header::Spacer, parse_spacer_line),
     ))(rest)
 }
