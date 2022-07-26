@@ -23,7 +23,7 @@ fn run() -> Result<()> {
 
     for line in reader.lines() {
         let line = line?;
-        parser.parse(&line)?;
+        parser.parse_line(&line)?;
     }
 
     Ok(())

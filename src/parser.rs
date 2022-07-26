@@ -1,12 +1,8 @@
 mod combinator;
+mod display;
 mod header;
 
-use std::{
-    collections::HashMap,
-    fmt::{Display, Write},
-    ops::Not,
-    rc::Rc,
-};
+use std::{collections::HashMap, ops::Not, rc::Rc};
 
 use nom::{Finish, IResult};
 
@@ -15,7 +11,7 @@ use self::{
     header::{parse_header, Header},
 };
 use crate::{
-    extra_checked_ops::ExtraCheckedOps,
+    ensure, extra_checked_ops::ExtraCheckedOps,
     instance_counter::InstanceCounter, CauseOfDeath, Error,
     Result, CAUSES_OF_DEATH,
 };
@@ -25,6 +21,7 @@ const WORLD: &str = "<world>";
 pub type CauseOfDeathCounter =
     InstanceCounter<CauseOfDeath, CAUSES_OF_DEATH>;
 
+/// A parser for Quake 3 Arena logs
 pub struct LogParser {
     /// The index of the current game.
     game_idx: u8,
@@ -41,6 +38,7 @@ pub struct LogParser {
 }
 
 impl LogParser {
+    /// Build a new, empty `LogpParser`
     pub fn new() -> Self {
         Self {
             cause_of_death_counter: InstanceCounter::new(),
@@ -51,7 +49,11 @@ impl LogParser {
         }
     }
 
-    pub fn parse(&mut self, input: &str) -> Result<()> {
+    /// Parses a single line of a Quake 3 Arena log.
+    ///
+    /// If a game has ended, this function will print
+    /// a report of the game to stdout.
+    pub fn parse_line(&mut self, input: &str) -> Result<()> {
         let (rest, action) =
             parse_header(input).map_err(Self::convert_error)?;
 
@@ -69,7 +71,7 @@ impl LogParser {
     }
 
     /// Insert the given username into the parser's
-    /// player buffer or return it if already inserted
+    /// player buffer or return it if already inserted.
     fn get_or_insert_player(
         &mut self,
         username: &str,
@@ -88,6 +90,7 @@ impl LogParser {
         }
     }
 
+    /// Converts a `nom` Error into a `crate::Error`
     fn convert_error(
         error: nom::Err<nom::error::Error<&str>>,
     ) -> Error {
@@ -113,6 +116,8 @@ impl LogParser {
         Ok(())
     }
 
+    /// Ensures all players have been
+    /// inserted in `scores`
     fn fill_out_scores(&mut self) {
         for player in &self.players {
             if self.scores.contains_key(player).not() {
@@ -122,19 +127,24 @@ impl LogParser {
     }
 
     fn clear(&mut self) {
+        // Get the game counter ready for the next game ..
+        self.game_idx += 1;
+
+        // .. and then reset all the rest
         self.players.clear();
         self.scores.clear();
-        self.game_idx += 1;
         self.total_kills = 0;
         self.cause_of_death_counter = InstanceCounter::new();
     }
 
-    fn handle_kill<'a>(
-        &mut self,
-        input: &'a str,
-    ) -> Result<&'a str> {
+    fn handle_kill<'a>(&mut self, input: &'a str) -> Result<()> {
         let (rest, message) =
             parse_kill(input).map_err(Self::convert_error)?;
+
+        ensure!(
+            rest.trim().is_empty(),
+            "Line contained unexpected input"
+        );
 
         self.cause_of_death_counter
             .add(message.cause_of_death)?;
@@ -159,96 +169,7 @@ impl LogParser {
 
         self.total_kills.checked_increment()?;
 
-        Ok(rest)
-    }
-}
-
-/// Mini built-in JSON formatter :P
-impl Display for LogParser {
-    fn fmt(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        fn write_players(
-            f: &mut std::fmt::Formatter<'_>,
-            slice: &[Rc<str>],
-        ) -> std::fmt::Result {
-            write!(f, "\t\"players\": [")?;
-
-            if let Some((last, elems)) = slice.split_last() {
-                for elem in elems {
-                    write!(f, "\"{elem}\", ")?;
-                }
-                write!(f, "\"{last}\"")?;
-            }
-
-            f.write_str("],\n")
-        }
-
-        fn write_score(
-            f: &mut std::fmt::Formatter<'_>,
-            scores: &HashMap<Rc<str>, i32>,
-        ) -> std::fmt::Result {
-            writeln!(f, "\t\"kills\": {{")?;
-
-            let length = scores.len();
-
-            for (idx, (player, &score)) in
-                scores.iter().enumerate()
-            {
-                write!(f, "\t\t\"{player}\": {score}")?;
-
-                if idx + 1 != length {
-                    writeln!(f, ",")?;
-                } else {
-                    writeln!(f)?;
-                }
-            }
-
-            writeln!(f, "\t}}")
-        }
-
-        fn write_means_of_death(
-            f: &mut std::fmt::Formatter<'_>,
-            counter: &CauseOfDeathCounter,
-        ) -> std::fmt::Result {
-            writeln!(f, "\t\"kills_by_means\": {{")?;
-
-            let length = CAUSES_OF_DEATH;
-
-            for idx in 0..CAUSES_OF_DEATH {
-                // Should not fail: this same operation is done
-                // during testing
-                let cause_of_death =
-                    CauseOfDeath::try_from(idx as u8).unwrap();
-                let incidence =
-                    counter.get(cause_of_death).unwrap_or(0);
-                if incidence == 0 {
-                    continue;
-                }
-
-                write!(
-                    f,
-                    "\t\t\"{cause_of_death}\": {incidence}"
-                )?;
-
-                if idx + 1 != length {
-                    writeln!(f, ",")?;
-                } else {
-                    writeln!(f)?;
-                }
-            }
-
-            writeln!(f, "\t}}")
-        }
-
-        writeln!(f, "\"game{}\": {{", self.game_idx)?;
-        writeln!(f, "\t\"total_kills\": {}", self.total_kills)?;
-        write_players(f, &self.players)?;
-        write_score(f, &self.scores)?;
-        write_means_of_death(f, &self.cause_of_death_counter)?;
-
-        f.write_char('}')
+        Ok(())
     }
 }
 
@@ -266,10 +187,10 @@ mod tests {
         let crab: Rc<str> = Rc::from("crab");
         let gopher: Rc<str> = Rc::from("gopher");
 
-        parser.parse(" 21:42 Kill: 1022 2 22: crab killed gopher by MOD_ROCKET").unwrap();
-        parser.parse(" 21:42 Kill: 1022 2 22: crab killed gopher by MOD_ROCKET").unwrap();
-        parser.parse(" 21:43 Kill: 1022 2 22: crab killed snek by MOD_ROCKET").unwrap();
-        parser.parse(" 21:43 Kill: 1022 2 22: <world> killed gopher by MOD_LAVA").unwrap();
+        parser.parse_line(" 21:42 Kill: 1022 2 22: crab killed gopher by MOD_ROCKET").unwrap();
+        parser.parse_line(" 21:42 Kill: 1022 2 22: crab killed gopher by MOD_ROCKET").unwrap();
+        parser.parse_line(" 21:43 Kill: 1022 2 22: crab killed snek by MOD_ROCKET").unwrap();
+        parser.parse_line(" 21:43 Kill: 1022 2 22: <world> killed gopher by MOD_LAVA").unwrap();
 
         assert_eq!(
             parser
@@ -302,7 +223,7 @@ mod tests {
         let mut parser = LogParser::new();
         let player: Rc<str> = Rc::from("xXplayerXx");
 
-        parser.parse(" 21:42 Kill: 1022 2 22: <world> killed xXplayerXx by MOD_TRIGGER_HURT").unwrap();
+        parser.parse_line(" 21:42 Kill: 1022 2 22: <world> killed xXplayerXx by MOD_TRIGGER_HURT").unwrap();
 
         assert_eq!(
             parser
