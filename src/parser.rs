@@ -4,6 +4,7 @@ mod header;
 use std::{
     collections::HashMap,
     fmt::{Display, Write},
+    ops::Not,
     rc::Rc,
 };
 
@@ -53,9 +54,6 @@ impl LogParser {
             parse_header(input).map_err(Self::convert_error)?;
 
         match action {
-            Header::InitGame => {
-                // TODO: do something here?
-            }
             Header::Kill => {
                 self.handle_kill(rest)?;
             }
@@ -96,9 +94,25 @@ impl LogParser {
     }
 
     fn handle_shutdown(&mut self) -> Result<()> {
+        if self.players.len() != self.scores.len() {
+            // Players that didn't score haven't been inserted
+            // into the `scores` map yet, so the function
+            // below fixes that
+            self.fill_out_scores();
+        }
+
         println!("{self}");
+
         self.clear();
         Ok(())
+    }
+
+    fn fill_out_scores(&mut self) {
+        for player in &self.players {
+            if self.scores.contains_key(player).not() {
+                self.scores.entry(player.clone()).or_default();
+            }
+        }
     }
 
     fn clear(&mut self) {
@@ -271,10 +285,9 @@ mod tests {
         assert_eq!(*parser.scores.get(&crab).unwrap(), 3);
         assert_eq!(*parser.scores.get(&gopher).unwrap(), -1);
 
-        // snek didn't score so it did not get included in the
-        // map
-        // TODO: fix this or remember to take it
-        //       in consideration when writing the game's writeup
+        // `snek` didn't score so it did not get included in the
+        // map. This is fixed in `LogParser::handle_shutdown`
+        // before printing the report.
         assert_eq!(parser.scores.get(&snek), None);
     }
 
