@@ -1,7 +1,11 @@
 mod combinator;
 mod header;
 
-use std::{collections::HashMap, rc::Rc};
+use std::{
+    collections::HashMap,
+    fmt::{Display, Write},
+    rc::Rc,
+};
 
 use self::{
     combinator::parse_kill,
@@ -19,8 +23,15 @@ pub type CauseOfDeathCounter =
     InstanceCounter<CauseOfDeath, CAUSES_OF_DEATH>;
 
 pub struct LogParser {
+    /// The index of the current game
+    game_idx: u8,
+    total_kills: u32,
+    /// Totals up how many deaths were caused by each
+    /// cause of death
     cause_of_death_counter: CauseOfDeathCounter,
+    /// The players in a game
     players: Vec<Rc<str>>,
+    /// Maps each player to his score
     scores: HashMap<Rc<str>, i32>,
 }
 
@@ -30,6 +41,8 @@ impl LogParser {
             cause_of_death_counter: InstanceCounter::new(),
             players: vec![],
             scores: HashMap::new(),
+            game_idx: 0,
+            total_kills: 0,
         }
     }
 
@@ -38,11 +51,13 @@ impl LogParser {
             parse_header(input).map_err(Self::convert_error)?;
 
         match action {
-            Header::InitGame => {}
+            Header::InitGame => {
+                // TODO: do something here?
+            }
             Header::Kill => {
                 self.handle_kill(rest)?;
             }
-            Header::ShutdownGame => {}
+            Header::ShutdownGame => self.handle_shutdown()?,
             _ => {
                 // Not relevant for this application
             }
@@ -78,6 +93,20 @@ impl LogParser {
         Error::ParsingError
     }
 
+    fn handle_shutdown(&mut self) -> Result<()> {
+        println!("{self}");
+        self.clear();
+        Ok(())
+    }
+
+    fn clear(&mut self) {
+        self.players.clear();
+        self.scores.clear();
+        self.game_idx += 1;
+        self.total_kills = 0;
+        self.cause_of_death_counter = InstanceCounter::new();
+    }
+
     fn handle_kill<'a>(
         &mut self,
         input: &'a str,
@@ -106,7 +135,45 @@ impl LogParser {
                 .checked_increment()?;
         }
 
+        self.total_kills.checked_increment()?;
+
         Ok(rest)
+    }
+}
+
+impl Display for LogParser {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        fn write_slice(
+            slice: &[Rc<str>],
+            f: &mut std::fmt::Formatter<'_>,
+        ) -> std::fmt::Result {
+            f.write_char('[')?;
+            if let Some((last, elems)) = slice.split_last() {
+                for elem in elems {
+                    write!(f, "\"{elem}\", ")?;
+                }
+                write!(f, "\"{last}\"")?;
+            }
+
+            f.write_str("]\n")
+        }
+
+        writeln!(f, "\"game{}\": {{", self.game_idx)?;
+        writeln!(f, "\t\"total_kills\": {}", self.total_kills)?;
+        write!(f, "\t\"players\": ")?;
+        write_slice(&self.players, f)?;
+        writeln!(f, "\t\"kills\": {{")?;
+
+        for (player, &score) in &self.scores {
+            writeln!(f, "\t\t\"{player}\": {score},")?;
+        }
+
+        writeln!(f, "\t}}")?;
+
+        f.write_char('}')
     }
 }
 
