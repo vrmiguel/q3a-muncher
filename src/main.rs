@@ -1,6 +1,7 @@
 mod cause_of_death;
 mod error;
 mod instance_counter;
+mod parser;
 
 pub use cause_of_death::{CauseOfDeath, CAUSES_OF_DEATH};
 pub use error::{Error, Result};

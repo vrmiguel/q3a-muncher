@@ -1,3 +1,5 @@
+use nom::{error::ErrorKind, Err};
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[macro_export]
@@ -21,4 +23,7 @@ pub enum Error {
     UnknownCauseOfDeath(String),
     #[error("No cause of death is mapped to {0}")]
     CauseOfDeathFromByte(u8),
+    #[error("Parsing error")]
+    // ParsingError(nom::error::Error<String>),
+    ParsingError,
 }
