@@ -119,7 +119,7 @@ impl LogParser {
                 self.get_or_insert_player(message.attacker);
 
             self.scores
-                .entry(victim)
+                .entry(attacker)
                 .or_default()
                 .checked_increment();
         }
@@ -130,12 +130,65 @@ impl LogParser {
 
 #[cfg(test)]
 mod tests {
+    use std::{collections::HashSet, rc::Rc};
+
     use super::LogParser;
+    use crate::CauseOfDeath;
 
     #[test]
     fn parser_saves_players_correctly() {
         let mut parser = LogParser::new();
+        let snek: Rc<str> = Rc::from("snek");
+        let crab: Rc<str> = Rc::from("crab");
+        let gopher: Rc<str> = Rc::from("gopher");
 
-        parser.parse(" 21:42 Kill: 1022 2 22: <world> killed Isgalamido by MOD_TRIGGER_HURT").unwrap();
+        parser.parse(" 21:42 Kill: 1022 2 22: crab killed gopher by MOD_ROCKET").unwrap();
+        parser.parse(" 21:42 Kill: 1022 2 22: crab killed gopher by MOD_ROCKET").unwrap();
+        parser.parse(" 21:43 Kill: 1022 2 22: crab killed snek by MOD_ROCKET").unwrap();
+        parser.parse(" 21:43 Kill: 1022 2 22: <world> killed gopher by MOD_LAVA").unwrap();
+
+        assert_eq!(
+            parser
+                .cause_of_death_counter
+                .get(CauseOfDeath::Rocket)
+                .unwrap(),
+            3
+        );
+
+        assert_eq!(
+            HashSet::from_iter(parser.players.into_iter()),
+            HashSet::from([
+                snek.clone(),
+                crab.clone(),
+                gopher.clone()
+            ])
+        );
+
+        assert_eq!(*parser.scores.get(&crab).unwrap(), 3);
+        assert_eq!(*parser.scores.get(&gopher).unwrap(), -1);
+
+        // snek didn't score so it did not get included in the
+        // map
+        // TODO: fix this or remember to take it
+        //       in consideration when writing the game's writeup
+        assert_eq!(parser.scores.get(&snek), None);
+    }
+
+    #[test]
+    fn parser_saves_players_correctly_when_killed_by_world() {
+        let mut parser = LogParser::new();
+        let player: Rc<str> = Rc::from("xXplayerXx");
+
+        parser.parse(" 21:42 Kill: 1022 2 22: <world> killed xXplayerXx by MOD_TRIGGER_HURT").unwrap();
+
+        assert_eq!(
+            parser
+                .cause_of_death_counter
+                .get(CauseOfDeath::TriggerHurt)
+                .unwrap(),
+            1
+        );
+        assert_eq!(parser.players, &[player.clone()]);
+        assert_eq!(*parser.scores.get(&player).unwrap(), -1);
     }
 }
