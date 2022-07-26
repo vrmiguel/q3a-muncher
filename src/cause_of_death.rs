@@ -261,4 +261,16 @@ mod tests {
             assert_eq!(byte as usize, expected_number);
         }
     }
+
+    #[test]
+    fn check_from_u8_impl() {
+        for (idx, expected_cause) in
+            (0..CauseOfDeath::COUNT).zip(CauseOfDeath::iter())
+        {
+            let cause_of_death =
+                CauseOfDeath::try_from(idx as u8).unwrap();
+
+            assert_eq!(cause_of_death, expected_cause);
+        }
+    }
 }

@@ -23,15 +23,17 @@ pub type CauseOfDeathCounter =
     InstanceCounter<CauseOfDeath, CAUSES_OF_DEATH>;
 
 pub struct LogParser {
-    /// The index of the current game
+    /// The index of the current game.
     game_idx: u8,
+    /// How many kills happened during this game,
+    /// including the ones caused by `<world>`.
     total_kills: u32,
     /// Totals up how many deaths were caused by each
-    /// cause of death
+    /// cause of death.
     cause_of_death_counter: CauseOfDeathCounter,
-    /// The players in a game
+    /// The players in a game.
     players: Vec<Rc<str>>,
-    /// Maps each player to his score
+    /// Maps each player to his score.
     scores: HashMap<Rc<str>, i32>,
 }
 
@@ -141,16 +143,18 @@ impl LogParser {
     }
 }
 
+/// Mini built-in JSON formatter :P
 impl Display for LogParser {
     fn fmt(
         &self,
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        fn write_slice(
-            slice: &[Rc<str>],
+        fn write_players(
             f: &mut std::fmt::Formatter<'_>,
+            slice: &[Rc<str>],
         ) -> std::fmt::Result {
-            f.write_char('[')?;
+            write!(f, "\t\"players\": [")?;
+
             if let Some((last, elems)) = slice.split_last() {
                 for elem in elems {
                     write!(f, "\"{elem}\", ")?;
@@ -158,20 +162,71 @@ impl Display for LogParser {
                 write!(f, "\"{last}\"")?;
             }
 
-            f.write_str("]\n")
+            f.write_str("],\n")
+        }
+
+        fn write_score(
+            f: &mut std::fmt::Formatter<'_>,
+            scores: &HashMap<Rc<str>, i32>,
+        ) -> std::fmt::Result {
+            writeln!(f, "\t\"kills\": {{")?;
+
+            let length = scores.len();
+
+            for (idx, (player, &score)) in
+                scores.iter().enumerate()
+            {
+                write!(f, "\t\t\"{player}\": {score}")?;
+
+                if idx + 1 != length {
+                    writeln!(f, ",")?;
+                } else {
+                    writeln!(f)?;
+                }
+            }
+
+            writeln!(f, "\t}}")
+        }
+
+        fn write_means_of_death(
+            f: &mut std::fmt::Formatter<'_>,
+            counter: &CauseOfDeathCounter,
+        ) -> std::fmt::Result {
+            writeln!(f, "\t\"kills_by_means\": {{")?;
+
+            let length = CAUSES_OF_DEATH;
+
+            for idx in 0..CAUSES_OF_DEATH {
+                // Should not fail: this same operation is done
+                // during testing
+                let cause_of_death =
+                    CauseOfDeath::try_from(idx as u8).unwrap();
+                let incidence =
+                    counter.get(cause_of_death).unwrap_or(0);
+                if incidence == 0 {
+                    continue;
+                }
+
+                write!(
+                    f,
+                    "\t\t\"{cause_of_death}\": {incidence}"
+                )?;
+
+                if idx + 1 != length {
+                    writeln!(f, ",")?;
+                } else {
+                    writeln!(f)?;
+                }
+            }
+
+            writeln!(f, "\t}}")
         }
 
         writeln!(f, "\"game{}\": {{", self.game_idx)?;
         writeln!(f, "\t\"total_kills\": {}", self.total_kills)?;
-        write!(f, "\t\"players\": ")?;
-        write_slice(&self.players, f)?;
-        writeln!(f, "\t\"kills\": {{")?;
-
-        for (player, &score) in &self.scores {
-            writeln!(f, "\t\t\"{player}\": {score},")?;
-        }
-
-        writeln!(f, "\t}}")?;
+        write_players(f, &self.players)?;
+        write_score(f, &self.scores)?;
+        write_means_of_death(f, &self.cause_of_death_counter)?;
 
         f.write_char('}')
     }
