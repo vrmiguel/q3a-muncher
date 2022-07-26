@@ -46,7 +46,16 @@ pub fn parse_kill_message(
         take_till1(is_ascii_whitespace)(rest)?;
 
     let cause_of_death = CauseOfDeath::from_str(cause_of_death)
-        .expect("TODO: try to convert this to a nom error");
+        .or_else(|_| {
+            use nom::error::{ContextError, Error, ErrorKind};
+
+            // help me god
+            Err(nom::Err::Error(ContextError::add_context(
+                cause_of_death,
+                "Not a valid CauseOfDeath",
+                Error::new(cause_of_death, ErrorKind::Tag),
+            )))
+        })?;
 
     let kill_message = KillMessage {
         attacker,
