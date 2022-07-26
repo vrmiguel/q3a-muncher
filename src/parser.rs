@@ -137,7 +137,7 @@ impl LogParser {
         self.cause_of_death_counter = InstanceCounter::new();
     }
 
-    fn handle_kill<'a>(&mut self, input: &'a str) -> Result<()> {
+    fn handle_kill(&mut self, input: &str) -> Result<()> {
         let (rest, message) =
             parse_kill(input).map_err(Self::convert_error)?;
 
