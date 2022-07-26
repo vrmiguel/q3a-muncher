@@ -1,16 +1,6 @@
 use nom::{
-    branch::alt,
-    bytes::complete::{
-        tag, take, take_while, take_while1, take_while_m_n,
-    },
-    character::complete::char,
-    combinator::value,
-    multi::separated_list0,
-    number::complete::double,
-    sequence::{
-        delimited, preceded, separated_pair, terminated,
-    },
-    IResult, Parser,
+    branch::alt, bytes::complete::tag, combinator::value,
+    IResult,
 };
 
 use super::combinator::{

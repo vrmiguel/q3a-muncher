@@ -1,22 +1,17 @@
 use std::str::FromStr;
 
 use nom::{
-    branch::alt,
     bytes::complete::{
-        tag, take, take_till1, take_until1, take_while,
-        take_while1, take_while_m_n,
+        tag, take_till1, take_until1, take_while, take_while_m_n,
     },
     character::complete::char,
-    combinator::value,
-    multi::separated_list0,
-    number::complete::double,
     sequence::{
         delimited, preceded, separated_pair, terminated, tuple,
     },
-    IResult, Parser,
+    IResult,
 };
 
-use crate::{cause_of_death, CauseOfDeath};
+use crate::CauseOfDeath;
 
 #[derive(Debug, PartialEq, Eq)]
 /// The information contained in a kill message, such as

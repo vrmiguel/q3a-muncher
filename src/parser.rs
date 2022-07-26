@@ -1,28 +1,10 @@
-#![allow(unused)]
 mod combinator;
 mod header;
 
 use std::{collections::HashMap, rc::Rc};
 
-use nom::{
-    branch::alt,
-    bytes::complete::{
-        tag, take, take_while, take_while1, take_while_m_n,
-    },
-    character::complete::char,
-    combinator::value,
-    multi::separated_list0,
-    number::complete::double,
-    sequence::{
-        delimited, preceded, separated_pair, terminated,
-    },
-    Finish, IResult, Parser,
-};
-
 use self::{
-    combinator::{
-        parse_kill, parse_kill_message, parse_kill_metadata,
-    },
+    combinator::parse_kill,
     header::{parse_header, Header},
 };
 use crate::{
@@ -90,7 +72,7 @@ impl LogParser {
     }
 
     fn convert_error(
-        error: nom::Err<nom::error::Error<&str>>,
+        _error: nom::Err<nom::error::Error<&str>>,
     ) -> Error {
         // TODO
         Error::ParsingError
@@ -113,7 +95,7 @@ impl LogParser {
             self.scores
                 .entry(victim)
                 .or_default()
-                .checked_decrement();
+                .checked_decrement()?;
         } else {
             let attacker =
                 self.get_or_insert_player(message.attacker);
@@ -121,7 +103,7 @@ impl LogParser {
             self.scores
                 .entry(attacker)
                 .or_default()
-                .checked_increment();
+                .checked_increment()?;
         }
 
         Ok(rest)
