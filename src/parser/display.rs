@@ -9,7 +9,6 @@ use crate::{
     parser::CauseOfDeathCounter, CauseOfDeath, CAUSES_OF_DEATH,
 };
 
-/// Mini built-in JSON formatter :P
 impl Display for LogParser {
     fn fmt(
         &self,

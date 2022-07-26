@@ -1,6 +1,8 @@
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[macro_export]
+/// Ensure a condition is true or early return
+/// with an `AssertionError`
 macro_rules! ensure {
     ($cond:expr, $msg:literal $(,)?) => {
         if !$cond {
@@ -13,9 +15,9 @@ macro_rules! ensure {
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("Error: sum would cause overflow")]
+    #[error("sum would cause overflow")]
     Overflow,
-    #[error("Error: subtraction would cause underflow")]
+    #[error("subtraction would cause underflow")]
     Underflow,
     #[error("Assertion error: {0}")]
     Assertion(&'static str),

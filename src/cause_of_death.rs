@@ -14,7 +14,7 @@ static_assertions::const_assert_eq!(
     CauseOfDeath::COUNT
 );
 
-// means of death
+/// Possible causes of death within a Q3A game
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[cfg_attr(test, derive(strum::EnumIter, strum::EnumCount))]
 #[repr(u8)]
@@ -51,6 +51,8 @@ pub enum CauseOfDeath {
 }
 
 impl CauseOfDeath {
+    /// Converts a cause of death into its
+    /// expected Q3A formatting
     pub fn as_str(self) -> &'static str {
         match self {
             CauseOfDeath::Shotgun => "MOD_SHOTGUN",

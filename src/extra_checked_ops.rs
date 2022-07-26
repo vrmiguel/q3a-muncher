@@ -3,8 +3,10 @@ use num_traits::{CheckedAdd, CheckedSub, Num, One};
 use crate::{Error, Result};
 
 pub trait ExtraCheckedOps {
+    /// Increment the given value, erring on overflows.
     fn checked_increment(&mut self) -> Result<()>;
 
+    /// Decremetn the given value, erring on underflows.
     fn checked_decrement(&mut self) -> Result<()>;
 }
 
