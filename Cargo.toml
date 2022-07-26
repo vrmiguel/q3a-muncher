@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 bytes = "1.2.0"
 nom = "7.1.1"
+num-traits = "0.2.15"
 static_assertions = "1.1.0"
 thiserror = "1.0.31"
 

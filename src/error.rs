@@ -1,5 +1,3 @@
-use nom::{error::ErrorKind, Err};
-
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[macro_export]
@@ -15,8 +13,10 @@ macro_rules! ensure {
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("TODO: figure out a message")]
+    #[error("Error: sum would cause overflow")]
     Overflow,
+    #[error("Error: subtraction would cause underflow")]
+    Underflow,
     #[error("Assertion error: {0}")]
     Assertion(&'static str),
     #[error("Unknown cause of death: {0}")]
@@ -26,4 +26,8 @@ pub enum Error {
     #[error("Parsing error")]
     // ParsingError(nom::error::Error<String>),
     ParsingError,
+    #[error("Missing file\nUsage: ./q3a-muncher [LOG-FILE]")]
+    MissingFile,
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
 }

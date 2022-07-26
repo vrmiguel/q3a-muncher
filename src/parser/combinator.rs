@@ -24,9 +24,9 @@ use crate::{cause_of_death, CauseOfDeath};
 ///  ∧∧∧∧∧∧         ∧∧∧∧∧∧∧∧∧∧    ∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧
 ///  attacker         victim       cause of death
 pub struct KillMessage<'a> {
-    attacker: &'a str,
-    victim: &'a str,
-    cause_of_death: CauseOfDeath,
+    pub attacker: &'a str,
+    pub victim: &'a str,
+    pub cause_of_death: CauseOfDeath,
 }
 
 // TODO: breaks if `attacker`'s name contains " killed " and if
@@ -60,6 +60,11 @@ pub fn parse_kill_message(
     };
 
     Ok((rest, kill_message))
+}
+
+pub fn parse_kill(input: &str) -> IResult<&str, KillMessage> {
+    let (rest, _) = parse_kill_metadata(input)?;
+    parse_kill_message(rest)
 }
 
 /// Parses timestamps in the form of `MM:ss`.

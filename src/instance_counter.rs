@@ -1,6 +1,8 @@
 use std::marker::PhantomData;
 
-use crate::{ensure, Error, Result};
+use crate::{
+    ensure, extra_checked_ops::ExtraCheckedOps, Result,
+};
 
 pub struct InstanceCounter<T: Into<u8>, const N: usize> {
     counter: [u8; N],
@@ -8,7 +10,7 @@ pub struct InstanceCounter<T: Into<u8>, const N: usize> {
 }
 
 impl<T: Into<u8>, const N: usize> InstanceCounter<T, N> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             counter: [0; N],
             marker: PhantomData,
@@ -41,22 +43,9 @@ impl<T: Into<u8>, const N: usize> InstanceCounter<T, N> {
     }
 }
 
-trait CheckedIncrement {
-    fn checked_increment(&mut self) -> Result<()>;
-}
-
-impl CheckedIncrement for u8 {
-    fn checked_increment(&mut self) -> Result<()> {
-        let current = *self;
-        *self = current.checked_add(1).ok_or(Error::Overflow)?;
-
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{CheckedIncrement, InstanceCounter};
+    use super::InstanceCounter;
     use crate::{CauseOfDeath, CAUSES_OF_DEATH};
 
     #[test]
@@ -74,18 +63,5 @@ mod tests {
             counter.get(CauseOfDeath::Rocket).unwrap(),
             0
         );
-    }
-
-    #[test]
-    fn checked_increment_works() {
-        let mut zero = 0_u8;
-        let mut limit = 255_u8;
-
-        zero.checked_increment().unwrap();
-        zero.checked_increment().unwrap();
-
-        assert_eq!(zero, 2);
-
-        assert!(limit.checked_increment().is_err());
     }
 }
