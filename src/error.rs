@@ -23,9 +23,8 @@ pub enum Error {
     UnknownCauseOfDeath(String),
     #[error("No cause of death is mapped to {0}")]
     CauseOfDeathFromByte(u8),
-    #[error("Parsing error")]
-    // ParsingError(nom::error::Error<String>),
-    ParsingError,
+    #[error("Parsing error: {0}")]
+    ParsingError(#[from] nom::error::Error<String>),
     #[error("Missing file\nUsage: ./q3a-muncher [LOG-FILE]")]
     MissingFile,
     #[error("IO error: {0}")]

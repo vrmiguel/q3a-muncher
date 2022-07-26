@@ -8,6 +8,8 @@ use std::{
     rc::Rc,
 };
 
+use nom::{Finish, IResult};
+
 use self::{
     combinator::parse_kill,
     header::{parse_header, Header},
@@ -87,10 +89,14 @@ impl LogParser {
     }
 
     fn convert_error(
-        _error: nom::Err<nom::error::Error<&str>>,
+        error: nom::Err<nom::error::Error<&str>>,
     ) -> Error {
-        // TODO
-        Error::ParsingError
+        let result: IResult<_, &str> = Err(error.to_owned());
+        let result = result.finish();
+
+        // This result is guaranteed to be an error,
+        // so unwrap_err will never fail
+        Error::ParsingError(result.unwrap_err())
     }
 
     fn handle_shutdown(&mut self) -> Result<()> {
