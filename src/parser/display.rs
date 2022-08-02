@@ -14,17 +14,19 @@ impl Display for LogParser {
         &self,
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        fn write_players(
+        fn write_players<'a>(
             f: &mut std::fmt::Formatter<'_>,
-            slice: &[Rc<str>],
+            usernames: impl Iterator<Item = &'a Rc<str>>,
         ) -> std::fmt::Result {
             write!(f, "\t\"players\": [")?;
 
-            if let Some((last, elems)) = slice.split_last() {
-                for elem in elems {
-                    write!(f, "\"{elem}\", ")?;
+            let mut usernames = usernames.peekable();
+
+            while let Some(username) = usernames.next() {
+                write!(f, "\"{username}\"")?;
+                if usernames.peek().is_some() {
+                    f.write_str(", ")?;
                 }
-                write!(f, "\"{last}\"")?;
             }
 
             f.write_str("],\n")
@@ -89,7 +91,7 @@ impl Display for LogParser {
 
         writeln!(f, "\"game{}\": {{", self.game_idx)?;
         writeln!(f, "\t\"total_kills\": {},", self.total_kills)?;
-        write_players(f, &self.players)?;
+        write_players(f, self.scores.keys())?;
         write_score(f, &self.scores)?;
         write_means_of_death(f, &self.cause_of_death_counter)?;
 

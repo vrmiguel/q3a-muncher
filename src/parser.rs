@@ -2,7 +2,7 @@ mod combinator;
 mod display;
 mod header;
 
-use std::{collections::HashMap, ops::Not, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 
 use nom::{Finish, IResult};
 
@@ -31,8 +31,6 @@ pub struct LogParser {
     /// Totals up how many deaths were caused by each
     /// cause of death.
     cause_of_death_counter: CauseOfDeathCounter,
-    /// The players in a game.
-    players: Vec<Rc<str>>,
     /// Maps each player to his score.
     scores: HashMap<Rc<str>, i32>,
 }
@@ -42,7 +40,6 @@ impl LogParser {
     pub fn new() -> Self {
         Self {
             cause_of_death_counter: InstanceCounter::new(),
-            players: vec![],
             scores: HashMap::new(),
             game_idx: 0,
             total_kills: 0,
@@ -72,22 +69,11 @@ impl LogParser {
 
     /// Insert the given username into the parser's
     /// player buffer or return it if already inserted.
-    fn get_or_insert_player(
-        &mut self,
-        username: &str,
-    ) -> Rc<str> {
-        match self
-            .players
-            .iter()
-            .find(|player| player.as_ref() == username)
-        {
-            Some(player) => player.clone(),
-            None => {
-                let ref_counted: Rc<str> = Rc::from(username);
-                self.players.push(ref_counted.clone());
-                ref_counted
-            }
-        }
+    fn intern_username(&mut self, username: &str) -> Rc<str> {
+        self.scores
+            .get_key_value(username)
+            .map(|(cached_username, _)| cached_username.clone())
+            .unwrap_or_else(|| Rc::from(username))
     }
 
     /// Converts a `nom` Error into a `crate::Error`
@@ -103,27 +89,10 @@ impl LogParser {
     }
 
     fn handle_shutdown(&mut self) -> Result<()> {
-        if self.players.len() != self.scores.len() {
-            // Players that didn't score haven't been inserted
-            // into the `scores` map yet, so the function
-            // below fixes that
-            self.fill_out_scores();
-        }
-
         println!("{self}");
 
         self.clear();
         Ok(())
-    }
-
-    /// Ensures all players have been
-    /// inserted in `scores`
-    fn fill_out_scores(&mut self) {
-        for player in &self.players {
-            if self.scores.contains_key(player).not() {
-                self.scores.entry(player.clone()).or_default();
-            }
-        }
     }
 
     fn clear(&mut self) {
@@ -131,7 +100,6 @@ impl LogParser {
         self.game_idx += 1;
 
         // .. and then reset all the rest
-        self.players.clear();
         self.scores.clear();
         self.total_kills = 0;
         self.cause_of_death_counter = InstanceCounter::new();
@@ -149,7 +117,7 @@ impl LogParser {
         self.cause_of_death_counter
             .add(message.cause_of_death)?;
 
-        let victim = self.get_or_insert_player(message.victim);
+        let victim = self.intern_username(message.victim);
 
         if message.attacker == WORLD {
             // Victim must get discounted one point
@@ -159,7 +127,7 @@ impl LogParser {
                 .checked_decrement()?;
         } else {
             let attacker =
-                self.get_or_insert_player(message.attacker);
+                self.intern_username(message.attacker);
 
             self.scores
                 .entry(attacker)
@@ -175,7 +143,7 @@ impl LogParser {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashSet, rc::Rc};
+    use std::rc::Rc;
 
     use super::LogParser;
     use crate::CauseOfDeath;
@@ -200,14 +168,14 @@ mod tests {
             3
         );
 
-        assert_eq!(
-            HashSet::from_iter(parser.players.into_iter()),
-            HashSet::from([
-                snek.clone(),
-                crab.clone(),
-                gopher.clone()
-            ])
-        );
+        // assert_eq!(
+        //     HashSet::from_iter(parser.players.into_iter()),
+        //     HashSet::from([
+        //         snek.clone(),
+        //         crab.clone(),
+        //         gopher.clone()
+        //     ])
+        // );
 
         assert_eq!(*parser.scores.get(&crab).unwrap(), 3);
         assert_eq!(*parser.scores.get(&gopher).unwrap(), -1);
@@ -232,7 +200,7 @@ mod tests {
                 .unwrap(),
             1
         );
-        assert_eq!(parser.players, &[player.clone()]);
+        // assert_eq!(parser.players, &[player.clone()]);
         assert_eq!(*parser.scores.get(&player).unwrap(), -1);
     }
 }
